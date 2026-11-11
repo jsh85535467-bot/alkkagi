@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#ffe0a8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="추억의 알까기">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap">
+<link rel="stylesheet" href="style.css">
+<title>추억의 알까기</title>
+</head>
+<body>
+<div id="app">
+
+  <!-- 처음 화면 -->
+  <section id="s-title" class="screen active">
+    <div class="hero">
+      <div class="stones" aria-hidden="true"><span class="st black"></span><span class="st white"></span></div>
+      <h1>추억의 알까기</h1>
+      <p class="tagline">손가락으로 톡! 튕겨서<br>상대 돌을 판 밖으로 내보내세요</p>
+    </div>
+    <div class="menu">
+      <button class="btn" id="btnContinue">이어서 하기</button>
+      <button class="btn sec" id="btnStages">단계 고르기</button>
+      <button class="btn sec" id="btnHow">게임 방법</button>
+      <button class="btn sec" id="btnSave">다른 폰으로 옮기기</button>
+      <button class="btn sec" id="btnSettings">설정</button>
+    </div>
+  </section>
+
+  <!-- 단계 고르기 -->
+  <section id="s-stages" class="screen">
+    <header class="bar">
+      <button class="btn small sec" data-go="title">← 처음으로</button>
+      <h2>단계 고르기</h2>
+    </header>
+    <p class="note">한 단계를 이기면 다음 단계가 열려요. 별은 많이 남길수록 많이 받아요.</p>
+    <div id="stageGrid" class="grid"></div>
+  </section>
+
+  <!-- 게임 -->
+  <section id="s-game" class="screen">
+    <header class="bar">
+      <button class="btn small sec" id="btnLeave">← 나가기</button>
+      <h2 id="stageTitle">1단계</h2>
+      <button class="btn small hint" id="btnHint">💡 힌트</button>
+    </header>
+    <p id="turnMsg" class="turnmsg" aria-live="polite"></p>
+    <div id="boardWrap"><canvas id="board"></canvas></div>
+    <div id="counts" class="counts"></div>
+  </section>
+
+  <!-- 다른 폰으로 옮기기 -->
+  <section id="s-save" class="screen">
+    <header class="bar">
+      <button class="btn small sec" data-go="title">← 처음으로</button>
+      <h2>폰 옮기기</h2>
+    </header>
+    <div class="card">
+      <h3>① 지금 폰: 코드 보내기</h3>
+      <p>아래 코드를 복사해서 카카오톡 "나에게 보내기"로 보내 두세요.</p>
+      <div id="codeBox" class="code" aria-label="이어하기 코드"></div>
+      <div class="row">
+        <button class="btn" id="btnCopy">코드 복사하기</button>
+        <button class="btn sec" id="btnShare">공유하기</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>② 새 폰: 코드 넣기</h3>
+      <p>새 폰에서 이 게임을 열고, 받은 코드를 아래에 붙여넣으세요.</p>
+      <textarea id="codeInput" rows="3" placeholder="여기에 코드를 붙여넣기" autocomplete="off" autocapitalize="characters" spellcheck="false"></textarea>
+      <button class="btn" id="btnLoad">불러오기</button>
+      <p id="saveMsg" class="msg" aria-live="polite"></p>
+    </div>
+    <p class="note">폰 설정에서 인터넷 사용 기록을 지우면 기록이 사라질 수 있으니, 가끔 코드를 보내 두면 안심이에요.</p>
+  </section>
+
+  <!-- 게임 방법 -->
+  <section id="s-how" class="screen">
+    <header class="bar">
+      <button class="btn small sec" data-go="title">← 처음으로</button>
+      <h2>게임 방법</h2>
+    </header>
+    <div class="card howtext" id="howText"></div>
+  </section>
+
+  <!-- 설정 -->
+  <section id="s-settings" class="screen">
+    <header class="bar">
+      <button class="btn small sec" data-go="title">← 처음으로</button>
+      <h2>설정</h2>
+    </header>
+    <div class="card">
+      <h3>소리</h3>
+      <div class="row">
+        <button class="btn" id="btnSound"></button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>축하 소리 들어보기</h3>
+      <p>5단계마다 클리어하면 특별한 효과음과 새소리가 함께 울려요. 눌러서 미리 들어 보세요.</p>
+      <div id="fanList" class="row"></div>
+    </div>
+    <div class="card">
+      <h3>새소리 들어보기</h3>
+      <p>그 밖의 단계에서는 짧은 효과음과 새소리가 울려요. 새는 5단계마다 바뀌어요.</p>
+      <div id="birdList" class="row"></div>
+    </div>
+    <div class="card">
+      <h3>쏘는 방법</h3>
+      <p id="aimDesc"></p>
+      <div class="row">
+        <button class="btn" id="btnAim"></button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>기록 지우기</h3>
+      <p>모든 단계 기록이 사라져요. 먼저 "다른 폰으로 옮기기"에서 코드를 받아 두세요.</p>
+      <div class="row">
+        <button class="btn danger" id="btnReset">처음부터 다시 시작</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- 알림창 -->
+<div id="modal" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="sheet">
+    <h2 id="modalTitle"></h2>
+    <div id="modalBody" class="mbody"></div>
+    <div id="modalBtns" class="mbtns"></div>
+  </div>
+</div>
+
+<noscript>이 게임은 자바스크립트가 켜져 있어야 해요.</noscript>
+<script src="physics.js"></script>
+<script src="ai.js"></script>
+<script src="store.js"></script>
+<script src="fanfare.js"></script>
+<script src="main.js"></script>
+</body>
+</html>

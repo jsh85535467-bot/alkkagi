@@ -1,0 +1,17 @@
+{
+  "name": "추억의 알까기",
+  "short_name": "알까기",
+  "description": "손가락으로 튕겨서 상대 돌을 판 밖으로 내보내는 추억의 놀이",
+  "lang": "ko",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffe0a8",
+  "theme_color": "#ffe0a8",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
