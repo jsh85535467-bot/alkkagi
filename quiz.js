@@ -83,6 +83,7 @@
       grid.innerHTML = '';
       var next = firstOpen();
       for (var n = 1; n <= spec.total; n++) {
+        if (n === 31) A.gridHead(grid);
         (function (n) {
           var s = list()[n - 1], unlocked = isUnlocked(n), b = document.createElement('button');
           b.className = 'cell' + (!unlocked ? ' locked' : s > 0 ? ' cleared' : '') + (unlocked && n === next && !allCleared() ? ' next' : '');

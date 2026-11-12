@@ -3,7 +3,8 @@
 
    현재 코드(KM): KM-XXXXX-XXXXX-...-C
      별 개수(0~3)를 한 단계에 2비트씩 담는다.
-     순서: 알까기 50칸, 순서 기억하기 50칸, 길 찾기 50칸, 속담 완성 30칸, 장보기 계산 30칸 (LENS 참고).
+     순서: 알까기, 순서 기억하기, 길 찾기, 속담 완성, 장보기 계산 각 50칸 (LENS 참고).
+     (속담·장보기가 30칸이던 때 만든 KM 코드는 글자 수로 알아보고 예전 배치로 읽는다)
      글자는 헷갈리는 O, I, L, U 를 뺀 32가지만 쓴다. 마지막 글자는 확인용.
    옛 코드(KN): 알까기·순서 기억하기·길 찾기 각 30칸만 담긴 예전 코드. 지금도 읽을 수 있다.
    옛 코드(AL): AL-33321-00000-...-K  → 알까기 기록만 담긴 예전 코드. 지금도 읽을 수 있다.
@@ -13,7 +14,9 @@
   var KEY = 'alkkagi.v1';   // 예전 저장 위치를 그대로 써서 기존 기록이 유지된다
   var TOTAL = 50;           // 가장 긴 게임의 단계 수 (알까기·순서 기억·길 찾기의 31~50단계는 '고수 코스')
   var KEYS = ['stars', 'sq', 'mz', 'pv', 'sh'];   // 알까기, 순서 기억하기, 길 찾기, 속담 완성, 장보기 계산
-  var LENS = { stars: 50, sq: 50, mz: 50, pv: 30, sh: 30 };
+  var LENS = { stars: 50, sq: 50, mz: 50, pv: 50, sh: 50 };   // 다섯 게임 모두 50단계
+  var OLD_KM_LENS = [50, 50, 50, 30, 30];                      // 속담·장보기가 30단계이던 때의 KM 코드 배치(그 코드도 읽는다)
+  var OLD_KM_CHARS = 84;                                        // 그때 코드의 글자 수(210칸 × 2비트 ÷ 5비트)
   var GAME_IDS = 'asmpc';                          // 놀이 기록에 쓰는 게임 글자(KEYS와 같은 순서)
   var ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
   var SPEEDS = ['slow', 'normal', 'fast'];
@@ -115,7 +118,10 @@
       return { ok: false, error: '코드가 맞지 않아요. 한 글자씩 다시 확인해 주세요.' };
     }
     var all = unpackStars(data);
-    var r = split(all, current ? [50, 50, 50, 30, 30] : [30, 30, 30, 0, 0]);   // KN 은 예전 배치(30칸씩 3게임)
+    var lens = !current ? [30, 30, 30, 0, 0]                              // KN: 예전 배치(30칸씩 3게임)
+      : data.length <= OLD_KM_CHARS ? OLD_KM_LENS                       // 속담·장보기 30칸 시절의 KM
+      : [50, 50, 50, 50, 50];
+    var r = split(all, lens);
     r.ok = true;
     return r;
   }

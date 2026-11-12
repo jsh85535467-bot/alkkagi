@@ -1,7 +1,7 @@
 /* 오프라인에서도 열리게 하는 서비스 워커
    - 게임 파일: 인터넷이 되면 최신 파일, 안 되면 저장해 둔 파일
    - 글씨체(구글 폰트): 한 번 받으면 따로 저장해 두어, 인터넷이 없어도 같은 글씨체로 보인다 */
-var CACHE = 'kioknolit-v22';
+var CACHE = 'kioknolit-v23';
 var FONT_CACHE = 'alkkagi-fonts-v1';   // 글씨체는 게임 버전이 바뀌어도 지우지 않는다
 var FILES = ['./', 'index.html', 'style.css', 'physics.js', 'ai.js', 'seqlogic.js', 'mazelogic.js', 'recordlogic.js', 'proverblogic.js', 'shoplogic.js', 'store.js', 'fanfare.js', 'main.js', 'sequence.js', 'maze.js', 'quiz.js', 'proverb.js', 'shop.js', 'record.js',
   'manifest.json', 'icons/icon.svg', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png'];
