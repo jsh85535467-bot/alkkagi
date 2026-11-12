@@ -3,24 +3,62 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<meta name="theme-color" content="#ffe0a8">
+<meta name="theme-color" content="#161b2d">
+<script>try{var __t=JSON.parse(localStorage.getItem('alkkagi.v1')||'{}').settings;var __v=__t&&__t.theme;document.documentElement.setAttribute('data-theme',__v==='blue'||__v==='neon'?__v:'pop')}catch(e){document.documentElement.setAttribute('data-theme','pop')}</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="추억의 알까기">
+<meta name="apple-mobile-web-app-title" content="기억놀이터">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap">
 <link rel="stylesheet" href="style.css">
-<title>추억의 알까기</title>
+<title>기억놀이터</title>
 </head>
 <body>
 <div id="app">
 
-  <!-- 처음 화면 -->
-  <section id="s-title" class="screen active">
+  <!-- 홈: 놀이터 입구 -->
+  <section id="s-home" class="screen active">
+    <div class="hero">
+      <div class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <h1>기억놀이터</h1>
+      <p class="tagline">즐겁게 놀면서<br>머리도 쓰는 놀이터</p>
+    </div>
+    <div class="menu">
+      <button class="gamecard" data-go="title">
+        <span class="gicon" style="background:#ffe08a" aria-hidden="true">🎯</span>
+        <span class="gtext"><b>추억의 알까기</b><span>튕겨서 상대 돌을 밖으로!</span><em class="gprog" id="progAlk">0 / 50단계</em></span>
+      </button>
+      <button class="gamecard" data-go="sq-title">
+        <span class="gicon" style="background:#b9dcff" aria-hidden="true">🧠</span>
+        <span class="gtext"><b>순서 기억하기</b><span>반짝이는 순서를 기억해요</span><em class="gprog" id="progSq">0 / 50단계</em></span>
+      </button>
+      <button class="gamecard" data-go="mz-title">
+        <span class="gicon" style="background:#aeead4" aria-hidden="true">🐿️</span>
+        <span class="gtext"><b>길 찾기</b><span>도토리를 모아 집으로!</span><em class="gprog" id="progMz">0 / 50단계</em></span>
+      </button>
+      <button class="gamecard" data-go="pv-title">
+        <span class="gicon" style="background:#d9ccff" aria-hidden="true">📖</span>
+        <span class="gtext"><b>속담 완성</b><span>빈칸에 알맞은 말을 골라요</span><em class="gprog" id="progPv">0 / 30단계</em></span>
+      </button>
+      <button class="gamecard" data-go="sh-title">
+        <span class="gicon" style="background:#ffd0b0" aria-hidden="true">🛒</span>
+        <span class="gtext"><b>장보기 계산</b><span>시장에서 값을 계산해요</span><em class="gprog" id="progSh">0 / 30단계</em></span>
+      </button>
+      <button class="gamecard" data-go="record">
+        <span class="gicon" style="background:#ffd5cc" aria-hidden="true">📊</span>
+        <span class="gtext"><b>나의 기록</b><span>얼마나 즐겼는지 한눈에</span><em class="gprog" id="progRec">아직 기록이 없어요</em></span>
+      </button>
+      <button class="btn sec" id="btnSave">다른 폰으로 옮기기</button>
+      <button class="btn sec" id="btnSettings">설정</button>
+    </div>
+  </section>
+
+  <!-- 알까기 첫 화면 -->
+  <section id="s-title" class="screen">
     <div class="hero">
       <div class="stones" aria-hidden="true"><span class="st black"></span><span class="st white"></span></div>
       <h1>추억의 알까기</h1>
@@ -30,22 +68,21 @@
       <button class="btn" id="btnContinue">이어서 하기</button>
       <button class="btn sec" id="btnStages">단계 고르기</button>
       <button class="btn sec" id="btnHow">게임 방법</button>
-      <button class="btn sec" id="btnSave">다른 폰으로 옮기기</button>
-      <button class="btn sec" id="btnSettings">설정</button>
+      <button class="btn sec" data-go="home">← 기억놀이터로</button>
     </div>
   </section>
 
-  <!-- 단계 고르기 -->
+  <!-- 알까기: 단계 고르기 -->
   <section id="s-stages" class="screen">
     <header class="bar">
-      <button class="btn small sec" data-go="title">← 처음으로</button>
+      <button class="btn small sec" data-go="title">← 뒤로</button>
       <h2>단계 고르기</h2>
     </header>
     <p class="note">한 단계를 이기면 다음 단계가 열려요. 별은 많이 남길수록 많이 받아요.</p>
     <div id="stageGrid" class="grid"></div>
   </section>
 
-  <!-- 게임 -->
+  <!-- 알까기: 게임 -->
   <section id="s-game" class="screen">
     <header class="bar">
       <button class="btn small sec" id="btnLeave">← 나가기</button>
@@ -57,15 +94,127 @@
     <div id="counts" class="counts"></div>
   </section>
 
+  <!-- 알까기: 게임 방법 -->
+  <section id="s-how" class="screen">
+    <header class="bar">
+      <button class="btn small sec" data-go="title">← 뒤로</button>
+      <h2>게임 방법</h2>
+    </header>
+    <div class="card howtext" id="howText"></div>
+  </section>
+
+  <!-- 순서 기억하기 첫 화면 -->
+  <section id="s-sq-title" class="screen">
+    <div class="hero">
+      <div class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <h1>순서 기억하기</h1>
+      <p class="tagline">반짝이는 순서를 잘 보고<br>그대로 눌러 보세요</p>
+    </div>
+    <div class="menu">
+      <button class="btn" id="btnSqContinue">이어서 하기</button>
+      <button class="btn sec" id="btnSqStages">단계 고르기</button>
+      <button class="btn sec" id="btnSqHow">게임 방법</button>
+      <button class="btn sec" data-go="home">← 기억놀이터로</button>
+    </div>
+  </section>
+
+  <!-- 순서 기억하기: 단계 고르기 -->
+  <section id="s-sq-stages" class="screen">
+    <header class="bar">
+      <button class="btn small sec" data-go="sq-title">← 뒤로</button>
+      <h2>단계 고르기</h2>
+    </header>
+    <p class="note">한 단계를 맞히면 다음 단계가 열려요. 다시 보지 않고 맞힐수록 별을 많이 받아요.</p>
+    <div id="sqGrid" class="grid"></div>
+  </section>
+
+  <!-- 순서 기억하기: 게임 -->
+  <section id="s-sq-game" class="screen">
+    <header class="bar">
+      <button class="btn small sec" id="btnSqLeave">← 나가기</button>
+      <h2 id="sqStageTitle">1단계</h2>
+      <button class="btn small hint" id="btnSqReplay">▶ 시작</button>
+    </header>
+    <p id="sqMsg" class="turnmsg" aria-live="polite"></p>
+    <div id="sqDots" class="dots" aria-hidden="true"></div>
+    <div id="sqPads" class="pads p3"></div>
+    <div id="sqInfo" class="counts"></div>
+  </section>
+
+  <!-- 순서 기억하기: 게임 방법 -->
+  <section id="s-sq-how" class="screen">
+    <header class="bar">
+      <button class="btn small sec" data-go="sq-title">← 뒤로</button>
+      <h2>게임 방법</h2>
+    </header>
+    <div class="card howtext" id="sqHowText"></div>
+  </section>
+
+  <!-- 길 찾기 첫 화면 -->
+  <section id="s-mz-title" class="screen">
+    <div class="hero">
+      <div class="bigemoji" aria-hidden="true">🐿️🏡</div>
+      <h1>길 찾기</h1>
+      <p class="tagline">미로를 지나 도토리를 모아<br>집으로 돌아가요</p>
+    </div>
+    <div class="menu">
+      <button class="btn" id="btnMzContinue">이어서 하기</button>
+      <button class="btn sec" id="btnMzStages">단계 고르기</button>
+      <button class="btn sec" id="btnMzHow">게임 방법</button>
+      <button class="btn sec" data-go="home">← 기억놀이터로</button>
+    </div>
+  </section>
+
+  <!-- 길 찾기: 단계 고르기 -->
+  <section id="s-mz-stages" class="screen">
+    <header class="bar">
+      <button class="btn small sec" data-go="mz-title">← 뒤로</button>
+      <h2>단계 고르기</h2>
+    </header>
+    <p class="note">집에 도착하면 다음 단계가 열려요. 막다른 길에 덜 들어갈수록 별이 많아요. 5단계마다 풍경이 바뀌어요.</p>
+    <div id="mzGrid" class="grid"></div>
+  </section>
+
+  <!-- 길 찾기: 게임 -->
+  <section id="s-mz-game" class="screen">
+    <header class="bar">
+      <button class="btn small sec" id="btnMzLeave">← 나가기</button>
+      <h2 id="mzStageTitle">1단계</h2>
+      <button class="btn small hint" id="btnMzHint">💡 힌트</button>
+    </header>
+    <p id="mzMsg" class="turnmsg" aria-live="polite"></p>
+    <div id="mzWrap"><canvas id="mzBoard"></canvas></div>
+    <div id="mzStatus" class="counts"></div>
+    <div id="mzPad" class="dpad hidden"></div>
+  </section>
+
+  <!-- 길 찾기: 게임 방법 -->
+  <section id="s-mz-how" class="screen">
+    <header class="bar">
+      <button class="btn small sec" data-go="mz-title">← 뒤로</button>
+      <h2>게임 방법</h2>
+    </header>
+    <div class="card howtext" id="mzHowText"></div>
+  </section>
+
+  <!-- 나의 기록 -->
+  <section id="s-record" class="screen">
+    <header class="bar">
+      <button class="btn small sec" data-go="home">← 놀이터로</button>
+      <h2>나의 기록</h2>
+    </header>
+    <div id="recBody" class="recbody"></div>
+  </section>
+
   <!-- 다른 폰으로 옮기기 -->
   <section id="s-save" class="screen">
     <header class="bar">
-      <button class="btn small sec" data-go="title">← 처음으로</button>
+      <button class="btn small sec" data-go="home">← 놀이터로</button>
       <h2>폰 옮기기</h2>
     </header>
     <div class="card">
       <h3>① 지금 폰: 코드 보내기</h3>
-      <p>아래 코드를 복사해서 카카오톡 "나에게 보내기"로 보내 두세요.</p>
+      <p>아래 코드를 복사해서 카카오톡 "나에게 보내기"로 보내 두세요. 모든 게임의 기록이 한 코드에 들어 있어요.</p>
       <div id="codeBox" class="code" aria-label="이어하기 코드"></div>
       <div class="row">
         <button class="btn" id="btnCopy">코드 복사하기</button>
@@ -74,27 +223,18 @@
     </div>
     <div class="card">
       <h3>② 새 폰: 코드 넣기</h3>
-      <p>새 폰에서 이 게임을 열고, 받은 코드를 아래에 붙여넣으세요.</p>
+      <p>새 폰에서 기억놀이터를 열고, 받은 코드를 아래에 붙여넣으세요.</p>
       <textarea id="codeInput" rows="3" placeholder="여기에 코드를 붙여넣기" autocomplete="off" autocapitalize="characters" spellcheck="false"></textarea>
       <button class="btn" id="btnLoad">불러오기</button>
       <p id="saveMsg" class="msg" aria-live="polite"></p>
     </div>
-    <p class="note">폰 설정에서 인터넷 사용 기록을 지우면 기록이 사라질 수 있으니, 가끔 코드를 보내 두면 안심이에요.</p>
-  </section>
-
-  <!-- 게임 방법 -->
-  <section id="s-how" class="screen">
-    <header class="bar">
-      <button class="btn small sec" data-go="title">← 처음으로</button>
-      <h2>게임 방법</h2>
-    </header>
-    <div class="card howtext" id="howText"></div>
+    <p class="note">폰 설정에서 인터넷 사용 기록을 지우면 기록이 사라질 수 있으니, 가끔 코드를 보내 두면 안심이에요. 나의 기록의 달력과 점수는 이 폰에만 쌓이고, 단계와 별은 코드로 옮겨져요.</p>
   </section>
 
   <!-- 설정 -->
   <section id="s-settings" class="screen">
     <header class="bar">
-      <button class="btn small sec" data-go="title">← 처음으로</button>
+      <button class="btn small sec" data-go="home">← 놀이터로</button>
       <h2>설정</h2>
     </header>
     <div class="card">
@@ -104,25 +244,58 @@
       </div>
     </div>
     <div class="card">
-      <h3>축하 소리 들어보기</h3>
-      <p>5단계마다 클리어하면 특별한 효과음과 새소리가 함께 울려요. 눌러서 미리 들어 보세요.</p>
-      <div id="fanList" class="row"></div>
+      <h3>화면 스타일</h3>
+      <p id="themeDesc"></p>
+      <div class="row">
+        <button class="btn" id="btnTheme"></button>
+      </div>
     </div>
     <div class="card">
-      <h3>새소리 들어보기</h3>
-      <p>그 밖의 단계에서는 짧은 효과음과 새소리가 울려요. 새는 5단계마다 바뀌어요.</p>
-      <div id="birdList" class="row"></div>
+      <h3>순서 기억하기 속도</h3>
+      <p id="sqSpeedDesc"></p>
+      <div class="row">
+        <button class="btn" id="btnSqSpeed"></button>
+      </div>
     </div>
     <div class="card">
-      <h3>쏘는 방법</h3>
+      <h3>순서 기억하기 악기 소리</h3>
+      <p>버튼마다 전혀 다른 악기 소리가 나요. 눌러서 미리 들어 보세요.</p>
+      <div id="sqPadList" class="row"></div>
+    </div>
+    <div class="card">
+      <h3>길 찾기 걷는 방법</h3>
+      <p id="mzCtlDesc"></p>
+      <div class="row">
+        <button class="btn" id="btnMzCtl"></button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>길 찾기 소리 들어보기</h3>
+      <p>길 찾기는 새소리 대신 물방울, 풍경, 하프 같은 소리가 나요. 5단계마다 특별한 효과음이 울려요.</p>
+      <div id="mzFanList" class="row"></div>
+      <p style="margin-top:14px">그 밖의 단계에서 나는 소리예요. 5단계 구간마다 달라요.</p>
+      <div id="mzAccList" class="row"></div>
+    </div>
+    <div class="card">
+      <h3>알까기 쏘는 방법</h3>
       <p id="aimDesc"></p>
       <div class="row">
         <button class="btn" id="btnAim"></button>
       </div>
     </div>
     <div class="card">
+      <h3>알까기 축하 소리 들어보기</h3>
+      <p>5단계마다 클리어하면 특별한 효과음과 새소리가 함께 울려요. 눌러서 미리 들어 보세요.</p>
+      <div id="fanList" class="row"></div>
+    </div>
+    <div class="card">
+      <h3>알까기 새소리 들어보기</h3>
+      <p>그 밖의 단계에서는 짧은 효과음과 새소리가 울려요. 새는 5단계마다 바뀌어요.</p>
+      <div id="birdList" class="row"></div>
+    </div>
+    <div class="card">
       <h3>기록 지우기</h3>
-      <p>모든 단계 기록이 사라져요. 먼저 "다른 폰으로 옮기기"에서 코드를 받아 두세요.</p>
+      <p>모든 게임의 단계 기록과 나의 기록(달력, 점수)이 사라져요. 먼저 "다른 폰으로 옮기기"에서 코드를 받아 두세요.</p>
       <div class="row">
         <button class="btn danger" id="btnReset">처음부터 다시 시작</button>
       </div>
@@ -139,11 +312,22 @@
   </div>
 </div>
 
-<noscript>이 게임은 자바스크립트가 켜져 있어야 해요.</noscript>
+<noscript>이 앱은 자바스크립트가 켜져 있어야 해요.</noscript>
 <script src="physics.js"></script>
 <script src="ai.js"></script>
+<script src="seqlogic.js"></script>
+<script src="mazelogic.js"></script>
+<script src="recordlogic.js"></script>
+<script src="proverblogic.js"></script>
+<script src="shoplogic.js"></script>
 <script src="store.js"></script>
 <script src="fanfare.js"></script>
 <script src="main.js"></script>
+<script src="sequence.js"></script>
+<script src="maze.js"></script>
+<script src="quiz.js"></script>
+<script src="proverb.js"></script>
+<script src="shop.js"></script>
+<script src="record.js"></script>
 </body>
 </html>

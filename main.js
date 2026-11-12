@@ -12,21 +12,29 @@
   var dpr = 1;
 
   var store = ST.load();
+  var THEMES = { pop: { name: '팝아트', desc: '어두운 잿빛 남색 바탕에 크림색 카드, 굵은 테두리의 만화 같은 화면이에요.', table: '#272e49', meta: '#161b2d' },
+    neon: { name: '네온 야간', desc: '깊은 남색 바탕에 민트·분홍 불빛이 은은하게 빛나요.', table: '#101846', meta: '#0b0e24' },
+    blue: { name: '푸른 기본', desc: '전에 쓰던 편안한 푸른 화면이에요.', table: '#4a6c93', meta: '#243a58' } };
+  var THEME_ORDER = ['pop', 'neon', 'blue'];
+  var tableColor = THEMES.pop.table;   // 알까기 판 바깥 색(화면 스타일마다 다름)
   var G = null;                     // 지금 진행 중인 판
   var gameToken = 0;
   var acc = 0, lastTs = 0;
 
   /* ---------- 화면 전환 ---------- */
+  var hooks = [];                   // 다른 게임(순서 기억하기)이 화면 전환을 알아채는 통로
   function show(name) {
     var screens = document.querySelectorAll('.screen');
     for (var i = 0; i < screens.length; i++) screens[i].classList.remove('active');
     $('#s-' + name).classList.add('active');
     if (name !== 'game') { G = null; gameToken++; }
+    if (name === 'home') updateHome();
     if (name === 'title') updateTitle();
     if (name === 'stages') buildStageGrid();
     if (name === 'save') renderSave();
     if (name === 'settings') renderSettings();
     if (name === 'game') resize();
+    hooks.forEach(function (h) { try { h(name); } catch (e) { /* 한 게임의 오류가 전체를 멈추지 않게 */ } });
     window.scrollTo(0, 0);
   }
 
@@ -48,7 +56,7 @@
   function closeModal() { $('#modal').classList.add('hidden'); }
 
   /* ---------- 진행 상황 ---------- */
-  function isUnlocked(n) { return n === 1 || store.stars[n - 2] > 0; }
+  function isUnlocked(n) { return n === 1 || store.stars[n - 2] > 0 || store.stars[n - 1] > 0; }
   function firstOpenStage() {
     for (var n = 1; n <= TOTAL; n++) if (store.stars[n - 1] === 0) return n;
     return TOTAL;
@@ -56,6 +64,22 @@
   function allCleared() { return store.stars.every(function (s) { return s > 0; }); }
   function starText(n) { return '★★★'.slice(0, n) + '☆☆☆'.slice(0, 3 - n); }
   function persist() { ST.save(store); }
+
+  function allCode() { return ST.encode(store.stars, store.sq, store.mz, store.pv, store.sh); }
+  function totalCleared() { return ST.KEYS.reduce(function (n, k) { return n + clearedCount(store[k]); }, 0); }
+  // 고수 코스(31단계~)가 시작되는 곳에 넣는 제목 줄
+  function gridHead(grid) {
+    var h = document.createElement('div');
+    h.className = 'gridhead';
+    h.innerHTML = '🔥 고수 코스 <small>31~50단계 · 더 어려워요</small>';
+    grid.appendChild(h);
+  }
+  function clearedCount(list) { return list.filter(function (s) { return s > 0; }).length; }
+  function updateHome() {
+    $('#progAlk').textContent = clearedCount(store.stars) + ' / ' + TOTAL + '단계';
+    $('#progSq').textContent = clearedCount(store.sq) + ' / ' + TOTAL + '단계';
+    $('#progMz').textContent = clearedCount(store.mz) + ' / ' + TOTAL + '단계';
+  }
 
   function updateTitle() {
     var n = firstOpenStage();
@@ -68,6 +92,7 @@
     grid.innerHTML = '';
     var next = firstOpenStage();
     for (var n = 1; n <= TOTAL; n++) {
+      if (n === 31) gridHead(grid);
       (function (n) {
         var b = document.createElement('button');
         var s = store.stars[n - 1];
@@ -82,7 +107,19 @@
   }
 
   /* ---------- 설정 / 옮기기 ---------- */
+  /* ---------- 화면 스타일 ---------- */
+  function applyTheme() {
+    var t = THEMES[store.settings.theme] ? store.settings.theme : 'pop';
+    document.documentElement.setAttribute('data-theme', t);
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', THEMES[t].meta);
+    tableColor = THEMES[t].table;
+  }
+
   function renderSettings() {
+    var th = THEMES[store.settings.theme] ? store.settings.theme : 'pop';
+    $('#btnTheme').textContent = THEMES[th].name + ' (누르면 바뀜)';
+    $('#themeDesc').textContent = THEMES[th].desc;
     $('#btnSound').textContent = store.settings.sound ? '🔊 소리 켜짐 (누르면 끔)' : '🔇 소리 꺼짐 (누르면 켬)';
     $('#btnAim').textContent = store.settings.aim === 'pull' ? '뒤로 당겨서 쏘기 (지금)' : '밀어서 쏘기 (지금)';
     $('#aimDesc').textContent = store.settings.aim === 'pull'
@@ -111,7 +148,7 @@
   }
 
   function renderSave() {
-    $('#codeBox').textContent = ST.encode(store.stars);
+    $('#codeBox').textContent = allCode();
     $('#saveMsg').textContent = '';
     $('#saveMsg').className = 'msg';
     $('#codeInput').value = '';
@@ -139,7 +176,9 @@
     '<p class="big">3. 상대 돌을 판 밖으로!</p>' +
     '<p>흰 돌을 판 밖으로 모두 내보내면 이겨요. 내 돌이 밖으로 나가면 지는 거예요. 한 번씩 번갈아 쏴요.</p>' +
     '<p class="big">💡 막막하면 힌트 버튼</p>' +
-    '<p>힌트를 누르면 쏘기 좋은 돌과 방향을 알려줘요. 몇 번이든 눌러도 괜찮아요.</p>';
+    '<p>힌트를 누르면 쏘기 좋은 돌과 방향을 알려줘요. 몇 번이든 눌러도 괜찮아요.</p>' +
+    '<p class="big">🔥 31단계부터는 고수 코스</p>' +
+    '<p>상대 돌이 나보다 더 많고, 바위도 늘어나요. 힌트를 잘 활용해 보세요.</p>';
 
   /* ---------- 소리 ---------- */
   var actx = null, lastClack = 0;
@@ -221,7 +260,9 @@
     switch (G.phase) {
       case 'player':
         el.classList.add('mine');
-        el.textContent = G.shots === 0
+        el.textContent = G.shots === 0 && G.world.cfg.nFoe > G.world.cfg.n
+          ? '🔥 고수 코스! 상대 돌이 ' + (G.world.cfg.nFoe - G.world.cfg.n) + '개 더 많아요. 내 차례예요'
+          : G.shots === 0
           ? (pull ? '내 차례예요! 검은 돌을 꾹 누르고 뒤로 당겼다 놓으세요' : '내 차례예요! 검은 돌을 꾹 누르고 보낼 쪽으로 끌었다 놓으세요')
           : '내 차례예요! 검은 돌을 쏘세요';
         break;
@@ -285,6 +326,7 @@
       var stars = lost === 0 ? 3 : (remaining >= Math.ceil(G.startN / 2) ? 2 : 1);
       var better = stars > store.stars[n - 1];
       if (better) { store.stars[n - 1] = stars; persist(); }
+      logPlay('a', n, stars);
       var milestone = AlkFanfare.isMilestone(n);
       playFanfare(n);   // 5단계마다 특별한 효과음, 모든 단계에 구간별 새소리
       var msg = stars === 3 ? '내 돌을 하나도 안 잃었어요. 대단해요!' : stars === 2 ? '아주 잘했어요!' : '이겼어요! 다음엔 별을 더 노려 봐요.';
@@ -299,6 +341,7 @@
       var extra = milestone ? '<p>🎵 「' + AlkFanfare.name(n) + '」 · 🐦 ' + bird + '</p>' : '<p>🐦 ' + bird + '가 축하해 줘요</p>';
       modal({ title: title, html: '<div class="stars">' + starText(stars) + '</div><p>' + msg + '</p>' + extra, buttons: buttons });
     } else {
+      logPlay('a', n, 0);   // 졌을 때도 한 판으로 기록(별 0개)
       tone(330, 0, 0.25, 'sine', 0.22); tone(262, 0.22, 0.4, 'sine', 0.22);
       var tips = [
         '약하게 톡 쏘면 내 돌이 판 안에 남아서 안전해요.',
@@ -388,10 +431,10 @@
 
   function drawBoard() {
     var S = C.S, i;
-    ctx.fillStyle = '#a9dcc0';
+    ctx.fillStyle = tableColor;
     ctx.fillRect(-M, -M, VIEW, VIEW);
     var g = ctx.createLinearGradient(0, 0, S, S);
-    g.addColorStop(0, '#fbe3a6'); g.addColorStop(1, '#f2c971');
+    g.addColorStop(0, '#ecd9a6'); g.addColorStop(1, '#dcc07c');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, S, S);
     ctx.strokeStyle = 'rgba(150,95,30,.42)';
@@ -401,7 +444,7 @@
       ctx.beginPath(); ctx.moveTo(p, 40); ctx.lineTo(p, S - 40); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(40, p); ctx.lineTo(S - 40, p); ctx.stroke();
     }
-    ctx.strokeStyle = '#c98a35';
+    ctx.strokeStyle = '#b48a4e';
     ctx.lineWidth = 10;
     ctx.strokeRect(-5, -5, S + 10, S + 10);
   }
@@ -452,7 +495,7 @@
     ctx.lineTo(ex + Math.cos(a2) * 26, ey + Math.sin(a2) * 26);
     ctx.closePath(); ctx.fill();
     if (label) {
-      ctx.font = "32px 'Jua', 'Gowun Dodum', sans-serif"; ctx.textAlign = 'center'; ctx.lineWidth = 7;
+      ctx.font = "bold 32px 'Gowun Dodum', sans-serif"; ctx.textAlign = 'center'; ctx.lineWidth = 7;
       ctx.lineJoin = 'round';
       ctx.strokeStyle = 'rgba(74,52,38,.9)'; ctx.fillStyle = '#fff';
       var lx = ex + Math.cos(angle) * 42, ly = ey + Math.sin(angle) * 42 + 10;
@@ -563,6 +606,10 @@
     store.settings.sound = !store.settings.sound; persist(); renderSettings(); ensureAudio();
     if (store.settings.sound) tone(660, 0, 0.12, 'triangle', 0.25);
   });
+  $('#btnTheme').addEventListener('click', function () {
+    store.settings.theme = THEME_ORDER[(THEME_ORDER.indexOf(store.settings.theme) + 1) % THEME_ORDER.length];
+    persist(); applyTheme(); renderSettings();
+  });
   $('#btnAim').addEventListener('click', function () {
     store.settings.aim = store.settings.aim === 'pull' ? 'push' : 'pull'; persist(); renderSettings();
   });
@@ -571,32 +618,39 @@
       title: '정말 지울까요?', html: '<p>모든 단계 기록이 사라지고 되돌릴 수 없어요.</p>',
       buttons: [
         { label: '아니요, 그대로 둘게요' },
-        { label: '네, 지울게요', sec: true, onClick: function () { store.stars = ST.blankStars(); persist(); show('title'); } }
+        { label: '네, 지울게요', sec: true, onClick: function () { ST.KEYS.forEach(function (k) { store[k] = ST.blank(k); }); store.log = []; persist(); show('home'); } }
       ]
     });
   });
 
   $('#btnCopy').addEventListener('click', function () {
-    copyText(ST.encode(store.stars)).then(
+    copyText(allCode()).then(
       function () { saveMsg('복사했어요! 카카오톡 "나에게 보내기"에 붙여넣으세요.', true); },
       function () { saveMsg('복사가 안 돼요. 위 코드를 손가락으로 길게 눌러 직접 복사해 주세요.', false); }
     );
   });
   $('#btnShare').addEventListener('click', function () {
-    navigator.share({ title: '추억의 알까기 이어하기 코드', text: ST.encode(store.stars) }).catch(function () { /* 취소하면 무시 */ });
+    navigator.share({ title: '기억놀이터 이어하기 코드', text: allCode() }).catch(function () { /* 취소하면 무시 */ });
   });
   $('#btnLoad').addEventListener('click', function () {
     var r = ST.decode($('#codeInput').value);
     if (!r.ok) { saveMsg(r.error, false); return; }
-    var before = store.stars.filter(function (s) { return s > 0; }).length;
+    var before = totalCleared();
     store.stars = ST.merge(store.stars, r.stars);
+    store.sq = ST.merge(store.sq, r.sq);
+    store.mz = ST.merge(store.mz, r.mz);
+    store.pv = ST.merge(store.pv, r.pv);
+    store.sh = ST.merge(store.sh, r.sh);
     persist();
-    var after = store.stars.filter(function (s) { return s > 0; }).length;
-    saveMsg('불러왔어요! 클리어한 단계: ' + after + '개' + (after > before ? ' (+' + (after - before) + ')' : '') + '. "처음으로"에서 이어서 하세요.', true);
-    $('#codeBox').textContent = ST.encode(store.stars);
+    var after = totalCleared();
+    saveMsg('불러왔어요! 알까기 ' + clearedCount(store.stars) + '단계, 순서 기억하기 ' + clearedCount(store.sq) + '단계, 길 찾기 ' + clearedCount(store.mz) + '단계, 속담 완성 ' + clearedCount(store.pv) + '단계, 장보기 계산 ' + clearedCount(store.sh) + '단계를 클리어한 기록이에요' +
+      (after > before ? ' (+' + (after - before) + ')' : '') + '. 놀이터로 돌아가서 이어서 하세요.', true);
+    $('#codeBox').textContent = allCode();
   });
 
   /* ---------- 시작 ---------- */
+  applyTheme();
+  updateHome();
   updateTitle();
   resize();
   requestAnimationFrame(frame);
@@ -604,6 +658,26 @@
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
     window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () { /* 오프라인 기능만 빠짐 */ }); });
   }
+
+  // 다른 게임(순서 기억하기)이 함께 쓰는 기능: 화면 전환, 알림창, 저장, 소리
+  // 판을 끝낼 때마다 한 줄 기록(언제, 어느 게임, 몇 단계, 별 몇 개). 달력·연속 일수·점수 변화가 여기서 나온다
+  function logPlay(game, stage, stars) {
+    if (!Array.isArray(store.log)) store.log = [];
+    store.log.push({ t: Date.now(), g: game, s: stage, r: stars });
+    if (store.log.length > ST.LOG_MAX) store.log = store.log.slice(store.log.length - ST.LOG_MAX);
+    persist();
+  }
+
+  window.KiokApp = {
+    $: $, show: show, gridHead: gridHead, modal: modal, closeModal: closeModal, persist: persist, starText: starText, logPlay: logPlay,
+    store: function () { return store; },
+    ensureAudio: ensureAudio,
+    ctx: function () { return actx; },
+    soundOn: function () { return !!store.settings.sound; },
+    playFanfare: playFanfare,
+    renderSettings: renderSettings,
+    onShow: function (fn) { hooks.push(fn); }
+  };
 
   // 점검용(개발 중 브라우저 콘솔에서 상태를 볼 때 사용)
   window.__alk = { game: function () { return G; }, store: function () { return store; }, startStage: startStage };

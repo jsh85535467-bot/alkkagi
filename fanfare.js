@@ -391,6 +391,224 @@
     return 0.06 + BIRDS[g].dur + TAIL;
   }
 
+  /* ================= 순서 기억하기: 버튼 소리와 안내 소리 ================= */
+  // 버튼마다 전혀 다른 악기 소리가 난다. 높이·음색·리듬이 모두 달라서 귀로 구별하기 쉽다.
+  // (예전에는 새소리 6종이었는데, 셋이 비슷한 높이의 "삐리릭"이라 구별이 어려워서 바꿨다)
+  //   0 북 "둥"(낮고 묵직) / 1 종 "딩~"(높고 길게 울림) / 2 나팔 "빰~"(중간 높이, 길게 이어짐)
+  //   3 물방울 "또록"(위로 올라가는 소리) / 4 실로폰 "통통"(나무 소리 두 번) / 5 탬버린 "찰찰찰"(쇳소리)
+  // 끝나는 데 걸리는 초를 돌려준다.
+  var PAD_LEVEL = 2.0;
+  var PAD_NAMES = ['북', '종', '나팔', '물방울', '실로폰', '탬버린'];
+  function drum(ctx, d, t, vol) {
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'triangle';                                   // 폰 스피커에서도 들리도록 배음이 있는 파형
+    o.frequency.setValueAtTime(240, t);
+    o.frequency.exponentialRampToValueAtTime(105, t + 0.16);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);
+    o.connect(g); g.connect(d); o.start(t); o.stop(t + 0.45);
+    var s = ctx.createBufferSource(), lp = ctx.createBiquadFilter(), ng = ctx.createGain();   // 북채가 닿는 "탁"
+    s.buffer = noiseBuffer(ctx);
+    lp.type = 'lowpass'; lp.frequency.value = 900;
+    ng.gain.setValueAtTime(vol * 0.6, t);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+    s.connect(lp); lp.connect(ng); ng.connect(d); s.start(t); s.stop(t + 0.07);
+  }
+  function trumpet(ctx, d, t, midi, dur, vol) {
+    [-6, 6].forEach(function (cents) {
+      var o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+      o.type = 'sawtooth'; o.frequency.value = mtof(midi); o.detune.value = cents;
+      f.type = 'lowpass'; f.Q.value = 0.8;
+      f.frequency.setValueAtTime(500, t);
+      f.frequency.linearRampToValueAtTime(1700, t + 0.09);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(vol, t + 0.035);
+      g.gain.linearRampToValueAtTime(vol * 0.85, t + dur - 0.06);
+      g.gain.linearRampToValueAtTime(0.0001, t + dur);
+      o.connect(f); f.connect(g); g.connect(d); o.start(t); o.stop(t + dur + 0.03);
+    });
+  }
+  function rattle(ctx, d, t, len, vol) {
+    var s = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), hp = ctx.createBiquadFilter(), g = ctx.createGain();
+    s.buffer = noiseBuffer(ctx);
+    bp.type = 'bandpass'; bp.frequency.value = 4200; bp.Q.value = 0.7;
+    hp.type = 'highpass'; hp.frequency.value = 2200;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    s.connect(bp); bp.connect(hp); hp.connect(g); g.connect(d);
+    s.start(t, (t * 7.3) % 1); s.stop(t + len + 0.03);
+  }
+  var PAD_CALLS = [
+    function (ctx, d, t) { drum(ctx, d, t, 0.34); return 0.42; },                                   // 북 "둥"
+    function (ctx, d, t) { bell(ctx, d, 93, t, 0.8, 0.22); return 0.6; },                           // 종 "딩~"
+    function (ctx, d, t) { trumpet(ctx, d, t, 60, 0.42, 0.11); return 0.45; },                       // 나팔 "빰~"
+    function (ctx, d, t) { drop(ctx, d, t, 650, 1350, 0.26); drop(ctx, d, t + 0.16, 800, 1550, 0.24); return 0.4; },    // 물방울 "또록"
+    function (ctx, d, t) { pluck(ctx, d, 76, t, 0.3, 0.26); pluck(ctx, d, 76, t + 0.2, 0.3, 0.3); return 0.48; },      // 실로폰 "통통"
+    function (ctx, d, t) { rattle(ctx, d, t, 0.07, 0.3); rattle(ctx, d, t + 0.1, 0.07, 0.3); rattle(ctx, d, t + 0.2, 0.16, 0.32); return 0.4; }   // 탬버린 "찰찰찰"
+  ];
+  function padBus(ctx, dest) {
+    if (!ctx.__alkPad || ctx.__alkPadDest !== dest) {
+      var comp = ctx.createDynamicsCompressor(), out = ctx.createGain();
+      comp.threshold.value = -14; comp.knee.value = 12; comp.ratio.value = 3;
+      comp.attack.value = 0.004; comp.release.value = 0.25;
+      out.gain.value = PAD_LEVEL;
+      comp.connect(out); out.connect(dest);
+      ctx.__alkPad = comp; ctx.__alkPadDest = dest;
+    }
+    return ctx.__alkPad;
+  }
+  // 버튼마다 소리 크기가 비슷하게 들리도록 맞춘 값(크기가 단서가 되지 않게)
+  var PAD_TRIM = [2.0, 1.9, 1.3, 1.05, 0.85, 0.95];
+  function padSound(ctx, dest, idx) {
+    var i = Math.max(0, Math.min(5, idx | 0));
+    var trim = ctx.createGain();
+    trim.gain.value = PAD_TRIM[i];
+    trim.connect(padBus(ctx, dest));
+    return PAD_CALLS[i](ctx, trim, ctx.currentTime + 0.01);
+  }
+  function padNames() { return PAD_NAMES.slice(); }
+
+  // 순서 기억하기 클리어 소리: 효과음(5단계마다 특별한 곡) + 그 단계에 나온 악기들의 짧은 합주. 새소리는 쓰지 않는다
+  var SEQ_ENSEMBLE_LEVEL = 0.95;   // 합주 음량(단계와 상관없이 일정하게)
+  var SEQ_GAP = 0.2;
+  function playSeq(ctx, dest, stage, padCount, opts) {
+    stage = Math.max(1, Math.min(30, stage | 0));
+    opts = opts || {};
+    var n = Math.max(3, Math.min(6, (padCount | 0) || 3));
+    var g = group(stage), level = LEVELS[stage] || CHIME_LEVELS[g];
+    var effGain = opts.effectGain == null ? EFFECT_GAIN : opts.effectGain;
+    var ensGain = opts.ensembleGain == null ? 1 : opts.ensembleGain;
+    fadePrevious(ctx);
+    var fx = chain(ctx, dest, level * effGain);
+    var ens = chain(ctx, dest, SEQ_ENSEMBLE_LEVEL * ensGain);
+    var t0 = ctx.currentTime + 0.06, rng = rngFor(stage * 7919 + 13);
+    if (SONGS[stage]) SONGS[stage].build(ctx, fx, t0, rng);
+    else chime(ctx, fx, t0, g);
+    var t = t0 + birdAt(stage);
+    function hit(i, when, vol) {
+      var tr = ctx.createGain();
+      tr.gain.value = PAD_TRIM[i] * vol;
+      tr.connect(ens);
+      PAD_CALLS[i](ctx, tr, when);
+    }
+    for (var i = 0; i < n; i++) hit(i, t + i * SEQ_GAP, 0.8);      // 악기들이 차례로 한 번씩
+    hit(0, t + n * SEQ_GAP + 0.1, 0.6);                            // 마지막에 북과 종이 함께 "둥-딩~"
+    hit(1, t + n * SEQ_GAP + 0.1, 0.6);
+    return 0.06 + birdAt(stage) + n * SEQ_GAP + 1.0 + TAIL;
+  }
+  // 안내 소리: 'wrong' = 틀렸을 때(부드럽게 내려가는 두 음, 삑 소리 아님), 'go' = 이제 내 차례
+  function cue(ctx, dest, kind) {
+    var d = padBus(ctx, dest), t = ctx.currentTime + 0.01;
+    if (kind === 'wrong') {
+      [[392, 0], [330, 0.2]].forEach(function (n) {
+        var o = ctx.createOscillator(), g = ctx.createGain(), s = t + n[1];
+        o.type = 'sine'; o.frequency.value = n[0];
+        g.gain.setValueAtTime(0.0001, s);
+        g.gain.linearRampToValueAtTime(0.16, s + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, s + 0.32);
+        o.connect(g); g.connect(d); o.start(s); o.stop(s + 0.35);
+      });
+      return 0.55;
+    }
+    pop(ctx, d, t, 0.14);
+    bell(ctx, d, 84, t + 0.05, 0.7, 0.1);
+    return 0.8;
+  }
+
+  /* ================= 길 찾기: 새소리 대신 쓰는 효과음 ================= */
+  // 물방울 한 방울: 낮은 음에서 높은 음으로 "또록"
+  function drop(ctx, d, t, f0, f1, vol) {
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.exponentialRampToValueAtTime(f1, t + 0.09);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    o.connect(g); g.connect(d);
+    o.start(t); o.stop(t + 0.25);
+  }
+  // 5단계 구간마다 다른 소리 하나가 효과음 위로 얹힌다 (길 찾기에서는 새소리 대신 이것을 쓴다)
+  var ACCENTS = [
+    { name: '물방울', dur: 1.2, ring: function (ctx, d, t) {            // 1~5단계 "또로로롱"
+      [[1250, 1900, 0], [900, 1500, 0.17], [1100, 1700, 0.31], [800, 1300, 0.47], [1000, 1650, 0.6]].forEach(function (p) { drop(ctx, d, t + p[2], p[0], p[1], 0.2); });
+    } },
+    { name: '풍경', dur: 1.9, ring: function (ctx, d, t, rng) {          // 6~10단계 바람에 흔들리는 "딩~ 딩~"
+      var sc = [84, 86, 88, 91, 93];
+      for (var i = 0; i < 9; i++) bell(ctx, d, sc[Math.floor(rng() * sc.length)], t + i * 0.13 + rng() * 0.05, 0.9, 0.09);
+    } },
+    { name: '하프', dur: 1.5, ring: function (ctx, d, t) {               // 11~15단계 줄을 쓸어 올리는 "쪼로롱~"
+      [67, 71, 74, 79, 83, 86, 91].forEach(function (m, i) { pluck(ctx, d, m, t + i * 0.075, 0.2, 0.9); });
+      bell(ctx, d, 91, t + 0.55, 1.0, 0.08);
+    } },
+    { name: '마림바', dur: 1.3, ring: function (ctx, d, t) {             // 16~20단계 통통 튀는 "통통통통~"
+      [60, 64, 67, 72, 76, 72, 67, 72, 76].forEach(function (m, i) { pluck(ctx, d, m, t + i * 0.1, 0.22, 0.5); });
+      pluck(ctx, d, 79, t + 0.95, 0.2, 0.7);
+    } },
+    { name: '오르골', dur: 1.9, ring: function (ctx, d, t) {             // 21~25단계 또르르 맑은 "띠리링~"
+      [84, 88, 91, 88, 93, 91, 88, 84].forEach(function (m, i) { bell(ctx, d, m, t + i * 0.17, 0.8, 0.09); });
+    } },
+    { name: '종소리', dur: 2.1, ring: function (ctx, d, t) {             // 26~30단계 "딩-동-댕~"
+      [72, 76, 79].forEach(function (m, i) { bell(ctx, d, m, t + i * 0.32, 1.7, 0.15); });
+      [72, 76, 79, 84].forEach(function (m) { bell(ctx, d, m, t + 1.0, 1.5, 0.1); });
+    } }
+  ];
+  var ACCENT_LEVEL = [1.35, 1.7, 0.95, 0.9, 2.0, 0.85];   // 구간별 음량 보정(측정해서 맞춘 값: 소리마다 최대 음량이 0.7~0.8로 비슷해짐)
+
+  // 길 찾기 클리어 소리: 효과음(5단계마다 특별한 곡) + 구간별 소리 하나. 새소리는 쓰지 않는다
+  function playMaze(ctx, dest, stage, opts) {
+    stage = Math.max(1, Math.min(30, stage | 0));
+    opts = opts || {};
+    var g = group(stage), level = LEVELS[stage] || CHIME_LEVELS[g];
+    var effGain = opts.effectGain == null ? EFFECT_GAIN : opts.effectGain;
+    var accGain = opts.accentGain == null ? 1 : opts.accentGain;
+    fadePrevious(ctx);
+    var fx = chain(ctx, dest, level * effGain);
+    var acc = chain(ctx, dest, level * ACCENT_LEVEL[g] * accGain);
+    var t0 = ctx.currentTime + 0.06, rng = rngFor(stage * 7919 + 13);
+    if (SONGS[stage]) SONGS[stage].build(ctx, fx, t0, rng);
+    else chime(ctx, fx, t0, g);
+    ACCENTS[g].ring(ctx, acc, t0 + birdAt(stage), rngFor(g * 104729 + 11), g);
+    return 0.06 + birdAt(stage) + ACCENTS[g].dur + TAIL;
+  }
+  function accentName(stage) { return ACCENTS[group(stage)].name; }
+  function accentList() {
+    return ACCENTS.map(function (a, i) { return { stage: i * 5 + 1, label: (i * 5 + 1) + '~' + (i * 5 + 5) + '단계', name: a.name }; });
+  }
+
+  // 길 찾기 중에 나는 작은 소리: 걸음 / 벽에 닿음 / 잠겨 있음 / 도토리 줍기 / 열쇠 줍기 / 문 열림
+  function mazeCue(ctx, dest, kind, idx) {
+    var d = padBus(ctx, dest), t = ctx.currentTime + 0.01;
+    function tick(f, s, vol, len) {
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, s);
+      g.gain.linearRampToValueAtTime(vol, s + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.0001, s + len);
+      o.connect(g); g.connect(d); o.start(s); o.stop(s + len + 0.02);
+    }
+    if (kind === 'step') { tick((idx | 0) % 2 ? 600 : 520, t, 0.12, 0.07); return 0.1; }
+    if (kind === 'bump') {
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(95, t + 0.1);
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.3, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+      o.connect(g); g.connect(d); o.start(t); o.stop(t + 0.16);
+      return 0.16;
+    }
+    if (kind === 'locked') { tick(220, t, 0.14, 0.1); tick(196, t + 0.14, 0.14, 0.14); return 0.3; }
+    if (kind === 'pick') { pluck(ctx, d, 79, t, 0.2, 0.35); pluck(ctx, d, 84, t + 0.08, 0.2, 0.4); bell(ctx, d, 91, t + 0.14, 0.6, 0.09); return 0.8; }
+    if (kind === 'key') { bell(ctx, d, 84, t, 0.9, 0.13); pluck(ctx, d, 88, t + 0.1, 0.2, 0.4); return 1.0; }
+    if (kind === 'door') {
+      whoosh(ctx, d, t, 0.5, 500, 3500, 0.05);
+      [72, 76, 79, 84].forEach(function (m) { bell(ctx, d, m, t + 0.35, 1.1, 0.065); });
+      return 1.5;
+    }
+    return 0;
+  }
+
   function isMilestone(stage) { return !!SONGS[stage]; }
   function name(stage) { return SONGS[stage] ? SONGS[stage].name : ''; }
   function birdName(stage) { return BIRDS[group(stage)].name; }
@@ -404,7 +622,9 @@
 
   var api = {
     play: playWin, playWin: playWin, playBird: playBird, isMilestone: isMilestone, name: name,
-    birdName: birdName, list: list, birdList: birdList, duration: duration, group: group
+    birdName: birdName, list: list, birdList: birdList, duration: duration, group: group,
+    padSound: padSound, padNames: padNames, playSeq: playSeq, cue: cue,
+    playMaze: playMaze, accentName: accentName, accentList: accentList, mazeCue: mazeCue
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.AlkFanfare = api;

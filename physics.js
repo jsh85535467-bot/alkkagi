@@ -8,7 +8,8 @@
     VMAX: 1500,        // 최대 발사 속도
     PULL_CAP: 150,     // 최대 세기에 해당하는 당기는 거리
     DT: 1 / 240,       // 계산 간격(초)
-    TOTAL: 30,         // 전체 단계 수
+    TOTAL: 50,         // 전체 단계 수 (31~50단계는 '고수 코스')
+    BASE: 30,          // 기본 코스 단계 수 (난이도 곡선의 끝)
     E_STONE: 0.93,     // 돌끼리 튕김 정도
     E_ROCK: 0.6,       // 바위에 튕김 정도
     STOP: 6,           // 이 속도 미만이면 멈춤
@@ -18,24 +19,39 @@
   function lerp(a, b, t) { return a + (b - a) * t; }
 
   // 단계별 설정: 돌 개수, 상대 실력(0~1), 미끄러움, 바위
+  // 31~50단계(고수 코스): 상대가 최고 실력이고, 상대 돌이 나보다 많으며(nFoe), 바위도 더 많다
   function stageConfig(stage) {
-    var t = (stage - 1) / (C.TOTAL - 1);
+    var t = Math.min(1, (stage - 1) / (C.BASE - 1));
     var n = stage <= 5 ? 3 : stage <= 12 ? 4 : stage <= 20 ? 5 : 6;
     var rocks = [];
     if (stage >= 16 && stage < 24) rocks = [{ x: 320, y: 320, r: 34 }];
-    else if (stage >= 24) rocks = [{ x: 200, y: 320, r: 32 }, { x: 440, y: 320, r: 32 }];
-    return { stage: stage, n: n, level: t, k: lerp(2.1, 1.7, t), rocks: rocks };
+    else if (stage >= 24 && stage <= 35) rocks = [{ x: 200, y: 320, r: 32 }, { x: 440, y: 320, r: 32 }];
+    else if (stage > 35) rocks = [{ x: 320, y: 250, r: 30 }, { x: 190, y: 350, r: 30 }, { x: 450, y: 350, r: 30 }];
+    var nFoe = n;
+    if (stage > C.BASE) nFoe = stage <= 42 ? 7 : 8;
+    return { stage: stage, n: n, nFoe: nFoe, level: t, k: lerp(2.1, 1.7, t), rocks: rocks };
+  }
+
+  // m개의 돌을 한 줄로 늘어놓는다. 줄에 다 안 들어가면 앞뒤로 어긋나게 놓는다
+  function lineUp(team, m, y) {
+    var wide = m > 6, out = [], x0 = wide ? 70 : 110, x1 = C.S - x0, dir = team === 0 ? -1 : 1, i;
+    for (i = 0; i < m; i++) {
+      var x = m === 1 ? C.S / 2 : x0 + (x1 - x0) * i / (m - 1);
+      var yy = y;
+      if (wide) yy = y + dir * (i % 2 === 0 ? 0 : -1) * 48;   // 홀수 번째는 바깥쪽으로 어긋나게
+      out.push({ x: x, y: yy });
+    }
+    return out;
   }
 
   function createWorld(stage) {
     var cfg = stageConfig(stage);
     var stones = [];
     var id = 0;
-    var x0 = 110, x1 = C.S - 110;
     for (var team = 0; team < 2; team++) {
-      for (var i = 0; i < cfg.n; i++) {
-        var x = cfg.n === 1 ? C.S / 2 : x0 + (x1 - x0) * i / (cfg.n - 1);
-        stones.push({ id: id++, team: team, x: x, y: team === 0 ? C.S - 110 : 110, vx: 0, vy: 0, alive: true });
+      var pos = lineUp(team, team === 0 ? cfg.n : cfg.nFoe, team === 0 ? C.S - 110 : 110);
+      for (var i = 0; i < pos.length; i++) {
+        stones.push({ id: id++, team: team, x: pos[i].x, y: pos[i].y, vx: 0, vy: 0, alive: true });
       }
     }
     return { stones: stones, rocks: cfg.rocks, k: cfg.k, mu: C.MU, cfg: cfg };
